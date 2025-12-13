@@ -31,7 +31,7 @@ for (const dosya of komutDosyalari) {
 
 client.once('ready', () => {
   console.log(`${client.user.tag} olarak giriş yapıldı!`);
-  client.user.setActivity('!yardım | KuramMC', { type: 'PLAYING' });
+  client.user.setActivity('!yardım | KuramaMC', { type: 'PLAYING' });
 });
 
 client.on('messageCreate', async message => {
