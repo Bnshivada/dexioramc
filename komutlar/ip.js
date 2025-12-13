@@ -8,7 +8,7 @@ module.exports = {
       .setTitle('🌍 KuramaMC Sunucu IP Bilgisi')
       .setDescription(`**IP:** \`kuramamc.tkmc.net\`\n**Versiyon:** 1.21.3+`)
       .setColor('#00FF00')
-      .setThumbnail('https://imgur.com/a/Sr8Y47j') 
+      .setThumbnail('https://i.imgur.com/jLDX0Wf.png') 
       .setFooter({ text: 'Haydi Oyuna Katıl!' })
       .setTimestamp();
 
