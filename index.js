@@ -71,6 +71,7 @@ const ONAY_KANAL = "1454515007806115984";
 
 client.on(Events.InteractionCreate, async interaction => {
 
+  /* === BAŞVURU BUTONU === */
   if (interaction.isButton() && interaction.customId === "yetkili_basvuru_buton") {
 
     const modal = new ModalBuilder()
@@ -81,7 +82,6 @@ client.on(Events.InteractionCreate, async interaction => {
       ["ad", "Adınız Nedir?"],
       ["yas", "Yaşınız Kaç?"],
       ["aktiflik", "Kaç Saat Aktif Kalabilirsiniz?"],
-      ["ekip", "Ekip Çalışmasına Uyumlu musunuz?"],
       ["ign", "IGN (Oyun İçi İsim)"],
       ["yetki", "Hangi Yetkiyi İstiyorsunuz?"]
     ];
@@ -101,9 +101,10 @@ client.on(Events.InteractionCreate, async interaction => {
     return interaction.showModal(modal);
   }
 
+  /* === MODAL SUBMIT === */
   if (interaction.isModalSubmit() && interaction.customId === "yetkili_basvuru_modal") {
 
-    const cevaplar = ["ad","yas","aktiflik","ekip","ign","yetki"]
+    const cevaplar = ["ad","yas","aktiflik","ign","yetki"]
       .map(x => interaction.fields.getTextInputValue(x));
 
     const embed = new EmbedBuilder()
@@ -114,9 +115,8 @@ client.on(Events.InteractionCreate, async interaction => {
         `**1️⃣ Ad**\n${cevaplar[0]}\n\n` +
         `**2️⃣ Yaş**\n${cevaplar[1]}\n\n` +
         `**3️⃣ Aktiflik**\n${cevaplar[2]}\n\n` +
-        `**4️⃣ Ekip Uyumu**\n${cevaplar[3]}\n\n` +
-        `**5️⃣ IGN**\n${cevaplar[4]}\n\n` +
-        `**6️⃣ Yetki**\n${cevaplar[5]}`
+        `**4️⃣ IGN**\n${cevaplar[3]}\n\n` +
+        `**5️⃣ Yetki**\n${cevaplar[4]}`
       )
       .setFooter({
         text: "KuramaMC - Yetkili Başvuru Sistemi",
@@ -141,7 +141,12 @@ client.on(Events.InteractionCreate, async interaction => {
     return interaction.reply({ content: "✅ Başvurun gönderildi!", ephemeral: true });
   }
 
-  if (interaction.isButton()) {
+  /* === ONAY / RED === */
+  if (
+    interaction.isButton() &&
+    (interaction.customId.startsWith("basvuru_onay_") ||
+     interaction.customId.startsWith("basvuru_red_"))
+  ) {
 
     const id = interaction.customId.split("_").pop();
     const basvuran = await interaction.guild.members.fetch(id).catch(() => null);
@@ -152,21 +157,33 @@ client.on(Events.InteractionCreate, async interaction => {
     const onay = interaction.customId.startsWith("basvuru_onay_");
 
     const embed = new EmbedBuilder()
-      .setTitle(onay ? "🟢 KuramaMC - Başvuru Onayı!" : "🔴 KuramaMC - Başvuru Reddedildi")
+      .setTitle(onay ? "KuramaMC - Başvuru Onayı!" : "KuramaMC - Başvuru Reddedildi")
       .setColor(onay ? "Green" : "Red")
       .setDescription(
         onay
-          ? `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **ONAYLANDI**.\n\n**Onaylayan Yetkili**\n${yetkili}\n\n**Başvuran Kişi**\n${basvuran}`
-          : `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **REDDEDİLDİ**.\n\n**Reddeden Yetkili**\n${yetkili}\n\n**Başvuran Kişi**\n${basvuran}`
+          ? `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **Onaylandı**.`
+          : `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **Reddedildi**.`
+      )
+      .addFields(
+        {
+          name: onay ? "**Onaylayan Yetkili**" : "**Reddeden Yetkili**",
+          value: `${yetkili}`,
+          inline: true
+        },
+        {
+          name: "**Başvuran Kişi**",
+          value: `${basvuran}`,
+          inline: true
+        }
       )
       .setFooter({
         text: "KuramaMC - Yetkili Başvuru Sistemi",
         iconURL: interaction.guild.iconURL({ dynamic: true })
       });
 
-    kanal?.send({ embeds: [embed] });
+    await kanal?.send({ embeds: [embed] });
     await interaction.message.edit({ components: [] });
-    return interaction.reply({ content: "İşlem Başarıyla Tamamlandı.", ephemeral: true });
+    return interaction.reply({ content: "İşlem tamamlandı.", ephemeral: true });
   }
 });
 
