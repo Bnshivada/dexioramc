@@ -54,7 +54,7 @@ client.once('clientReady', () => {
   setTimeout(() => {
     client.user.setPresence({
       activities: [
-        { name: '⚒️ KuramaMC Yapım Aşamasında! ⚒️', type: 0 }
+        { name: '⚒️ KuramaMC Yapım Aşamasında ⚒️', type: 0 }
       ],
       status: 'online'
     });
