@@ -149,4 +149,118 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
+client.on(Events.InteractionCreate, async interaction => {
+
+  if (interaction.isButton() && interaction.customId === "yetkili_basvuru_buton") {
+
+    const modal = new ModalBuilder()
+      .setCustomId("yetkili_basvuru_modal")
+      .setTitle("KuramaMC - Yetkili Başvuru");
+
+    const sorular = [
+      ["ad", "Adınız Nedir?"],
+      ["yas", "Yaşınız Kaç?"],
+      ["aktiflik", "Kaç Saat Aktif Kalabilirsiniz?"],
+      ["ign", "IGN (Oyun İçi İsim)"],
+      ["yetki", "Hangi Yetkiyi İstiyorsunuz?"]
+    ];
+
+    sorular.forEach(s => {
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId(s[0])
+            .setLabel(s[1])
+            .setStyle(s[0] === "aktiflik" ? TextInputStyle.Paragraph : TextInputStyle.Short)
+            .setRequired(true)
+        )
+      );
+    });
+
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId === "yetkili_basvuru_modal") {
+
+    const cevaplar = ["ad","yas","aktiflik","ign","yetki"]
+      .map(x => interaction.fields.getTextInputValue(x));
+
+    const embed = new EmbedBuilder()
+      .setTitle("📃 Yeni Yetkili Başvurusu")
+      .setColor("Blurple")
+      .setDescription(
+        `${interaction.user}\n\n` +
+        `**1️⃣ Ad**\n${cevaplar[0]}\n\n` +
+        `**2️⃣ Yaş**\n${cevaplar[1]}\n\n` +
+        `**3️⃣ Aktiflik**\n${cevaplar[2]}\n\n` +
+        `**4️⃣ IGN**\n${cevaplar[3]}\n\n` +
+        `**5️⃣ Yetki**\n${cevaplar[4]}`
+      )
+      .setFooter({
+        text: "kuramamc.tkmc.net | KuramaMC",
+        iconURL: interaction.guild.iconURL({ dynamic: true })
+      });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`basvuru_onay_${interaction.user.id}`)
+        .setLabel("ONAYLA")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`basvuru_red_${interaction.user.id}`)
+        .setLabel("REDDET")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const logKanal = await interaction.guild.channels.fetch(BASVURU_LOG_KANAL);
+    await logKanal.send({ embeds: [embed], components: [row] });
+
+    return interaction.reply({ content: "✅ Başvurun gönderildi!", ephemeral: true });
+  }
+
+  if (
+    interaction.isButton() &&
+    (interaction.customId.startsWith("basvuru_onay_") ||
+     interaction.customId.startsWith("basvuru_red_"))
+  ) {
+
+    const id = interaction.customId.split("_").pop();
+    const basvuran = await interaction.guild.members.fetch(id).catch(() => null);
+    if (!basvuran) return;
+    const yetkili = interaction.user;
+    const kanal = await interaction.guild.channels.fetch(ONAY_KANAL);
+    const onay = interaction.customId.startsWith("basvuru_onay_");
+
+    const embed = new EmbedBuilder()
+      .setTitle(onay ? "KuramaMC - Başvuru Onayı!" : "KuramaMC - Başvuru Reddedildi")
+      .setColor(onay ? "Green" : "Red")
+      .setDescription(
+        onay
+          ? `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **Onaylandı**.`
+          : `${basvuran} Kullanıcısının Başvurusu ${yetkili} Tarafından **Reddedildi**.`
+      )
+      .addFields(
+        {
+          name: onay ? "**Onaylayan Yetkili**" : "**Reddeden Yetkili**",
+          value: `${yetkili}`,
+          inline: true
+        },
+        {
+          name: "**Başvuran Kişi**",
+          value: `${basvuran}`,
+          inline: true
+        }
+      )
+      .setFooter({
+        text: "kuramamc.tkmc.net | KuramaMC",
+        iconURL: interaction.guild.iconURL({ dynamic: true })
+      });
+
+    await kanal?.send({ embeds: [embed] });
+
+    await interaction.message.edit({ components: [] });
+    return interaction.reply({ content: "Tamamlandı.", ephemeral: true });
+  }
+});
+
 client.login(process.env.TOKEN);
