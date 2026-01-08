@@ -53,7 +53,7 @@ function formatRemaining(ms) {
 }
 
 module.exports = {
-  name: "çekiliş",
+  name: "cekilis",
   async execute(message, client) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
       return message.reply("❌ Bu komutu sadece adminler kullanabilir.");
