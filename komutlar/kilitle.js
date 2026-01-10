@@ -19,7 +19,7 @@ module.exports = {
                 .setColor(`#${randomColor}`)
                 .setTitle("🔒 Kanal Başarıyla Kilitlendi")
                 .setDescription(`${channel} <@${message.member.id}> adlı yetkili tarafından kilitlendi.\nKanal artık yazmaya kapalı, üyeler mesaj gönderemez.`)
-                .setFooter({ text: "kuramamc.tkmc.net | KuramaMC" })
+                .setFooter({ text: "5.133.100.199 | KuramaMC" })
                 .setTimestamp();
 
             message.channel.send({ embeds: [embed] });
