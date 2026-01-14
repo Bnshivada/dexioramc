@@ -26,6 +26,8 @@ const {
   Events
 } = require('discord.js');
 
+const { joinVoiceChannel } = require("@discordjs/voice");
+
 const fs = require('fs');
 const path = require('path');
 
@@ -39,7 +41,8 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -67,8 +70,27 @@ for (const dosya of eventlerDosyalari) {
   }
 }
 
+const SUNUCU_ID = "1445431166529437900";
+const SES_KANALI_ID = "1454426250100867336";
+
 client.once(Events.ClientReady, () => {
   console.log(`${client.user.tag} olarak giriş yapıldı!`);
+
+  const guild = client.guilds.cache.get(SUNUCU_ID);
+  if (!guild) return;
+
+  const channel = guild.channels.cache.get(SES_KANALI_ID);
+  if (!channel) return;
+
+  joinVoiceChannel({
+    channelId: channel.id,
+    guildId: guild.id,
+    adapterCreator: guild.voiceAdapterCreator,
+    selfMute: true,
+    selfDeaf: true
+  });
+
+  console.log("Bot 7/24 sessiz şekilde ses kanalında 🎧");
 });
 
 client.on(Events.MessageCreate, async message => {
@@ -293,5 +315,25 @@ client.on(Events.GuildMemberAdd, async member => {
   }
 });
 
-client.login(process.env.TOKEN);
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  if (
+    oldState.member?.id === client.user.id &&
+    oldState.channelId &&
+    !newState.channelId
+  ) {
+    const channel = oldState.guild.channels.cache.get(SES_KANALI_ID);
+    if (!channel) return;
 
+    joinVoiceChannel({
+      channelId: channel.id,
+      guildId: channel.guild.id,
+      adapterCreator: channel.guild.voiceAdapterCreator,
+      selfMute: true,
+      selfDeaf: true
+    });
+
+    console.log("Bot sesten atıldı → geri girdi 🔁");
+  }
+});
+
+client.login(process.env.TOKEN);
