@@ -1,7 +1,18 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+const express = require("express");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send("KuramaMC Discord Bot Aktif 🚀");
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 Web server aktif: ${PORT}`);
+});
 
 const client = new Client({
   intents: [
@@ -15,20 +26,15 @@ const PREFIX = "!";
 client.commands = new Collection();
 
 const commandsPath = path.join(__dirname, "komutlar");
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
 
 for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
-
-  if (command.name && typeof command.execute === "function") {
+  const command = require(path.join(commandsPath, file));
+  if (command.name && command.execute) {
     client.commands.set(command.name, command);
     console.log(`✔ Komut yüklendi: ${command.name}`);
-  } else {
-    console.log(`❌ Hatalı komut dosyası: ${file}`);
   }
 }
-
 client.on("messageCreate", message => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
