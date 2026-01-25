@@ -10,6 +10,7 @@ const {
   StringSelectMenuBuilder
 } = require("discord.js");
 
+/* ================= EXPRESS ================= */
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -21,6 +22,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server aktif: ${PORT}`);
 });
 
+/* ================= DISCORD ================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -32,6 +34,7 @@ const client = new Client({
 const PREFIX = "!";
 client.commands = new Collection();
 
+/* ================= KOMUTLAR ================= */
 const commandsPath = path.join(__dirname, "komutlar");
 const commandFiles = fs
   .readdirSync(commandsPath)
@@ -45,6 +48,7 @@ for (const file of commandFiles) {
   }
 }
 
+/* ================= MESSAGE COMMAND ================= */
 client.on("messageCreate", message => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
@@ -63,64 +67,58 @@ client.on("messageCreate", message => {
   }
 });
 
+/* ================= INTERACTIONS (DÜZELTİLDİ) ================= */
 client.on("interactionCreate", async interaction => {
-  if (interaction.isButton()) {
-    if (interaction.customId !== "ticket_create") return;
+  try {
+    /* 🎟️ BUTON */
+    if (interaction.isButton()) {
+      if (interaction.customId !== "ticket_create") return;
 
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId("ticket_reason")
-      .setPlaceholder("Bir sebep seçiniz")
-      .addOptions([
-        {
-          label: "Teknik Destek",
-          value: "teknik",
-          emoji: "🔧"
-        },
-        {
-          label: "Ödeme İşlemleri",
-          value: "odeme",
-          emoji: "💳"
-        },
-        {
-          label: "Oyun İçi Hesap İşlemleri",
-          value: "hesap",
-          emoji: "🔑"
-        },
-        {
-          label: "Partnerlik Anlaşmaları",
-          value: "partner",
-          emoji: "🤝"
-        },
-        {
-          label: "Diğer",
-          value: "diger",
-          emoji: "⁉️"
-        }
-      ]);
+      // ⚠️ ÖNCE ACK
+      await interaction.deferReply({ ephemeral: true });
 
-    const row = new ActionRowBuilder().addComponents(menu);
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("ticket_reason")
+        .setPlaceholder("Bir sebep seçiniz")
+        .addOptions([
+          { label: "Teknik Destek", value: "teknik", emoji: "🔧" },
+          { label: "Ödeme İşlemleri", value: "odeme", emoji: "💳" },
+          { label: "Oyun İçi Hesap İşlemleri", value: "hesap", emoji: "🔑" },
+          { label: "Partnerlik Anlaşmaları", value: "partner", emoji: "🤝" },
+          { label: "Diğer", value: "diger", emoji: "⁉️" }
+        ]);
 
-    return interaction.reply({
-      content:
-        "**Hangi Sebepten Dolayı Destek Talebi Oluşturuyorsunuz?**",
-      components: [row],
-      ephemeral: true
-    });
-  }
+      const row = new ActionRowBuilder().addComponents(menu);
 
-  if (interaction.isStringSelectMenu()) {
-    if (interaction.customId !== "ticket_reason") return;
+      return interaction.editReply({
+        content:
+          "**Hangi Sebepten Dolayı Destek Talebi Oluşturuyorsunuz?**",
+        components: [row]
+      });
+    }
 
-    const secim = interaction.values[0];
+    /* 📋 SELECT MENU */
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId !== "ticket_reason") return;
 
-    await interaction.update({
-      content: `✅ **Destek Talebi Sebebiniz:** ${secim}`,
-      components: []
-    });
-    
+      return interaction.update({
+        content: `✅ **Destek Talebi Sebebiniz:** ${interaction.values[0]}`,
+        components: []
+      });
+    }
+  } catch (err) {
+    console.error("INTERACTION HATASI:", err);
+
+    if (!interaction.replied && !interaction.deferred) {
+      interaction.reply({
+        content: "❌ Bir hata oluştu.",
+        ephemeral: true
+      });
+    }
   }
 });
 
+/* ================= READY ================= */
 client.once("ready", () => {
   console.log(`🤖 Bot giriş yaptı: ${client.user.tag}`);
 });
