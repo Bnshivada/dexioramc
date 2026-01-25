@@ -1,4 +1,9 @@
-const { EmbedBuilder } = require("discord.js");
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js");
 
 module.exports = {
   name: "ticket-embed",
@@ -7,6 +12,7 @@ module.exports = {
     if (!message.member.permissions.has("Administrator")) {
       return message.reply("❌ Bu komutu sadece yetkililer kullanabilir.");
     }
+
     const randomColor = Math.floor(Math.random() * 16777215);
 
     const embed = new EmbedBuilder()
@@ -28,6 +34,16 @@ module.exports = {
         iconURL: message.guild.iconURL({ dynamic: true })
       });
 
-    message.channel.send({ embeds: [embed] });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("ticket_create")
+        .setLabel("🎟️ Destek Talebi Oluştur")
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    message.channel.send({
+      embeds: [embed],
+      components: [row]
+    });
   }
 };
