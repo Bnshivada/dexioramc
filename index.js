@@ -176,6 +176,7 @@ if (interaction.customId === "ticket_claim") {
 
   const disabledRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
+      .setCustomId("ticket_claim_disabled") // ✅ EKLENDİ
       .setLabel("✅ Destek Üstlenildi!")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(true),
