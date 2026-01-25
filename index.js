@@ -166,23 +166,39 @@ client.on("interactionCreate", async interaction => {
       const isStaff = interaction.member.roles.cache.has(SUPPORT_ROLE_ID);
       const isOwner = interaction.channel.name.endsWith(interaction.user.id);
 
-      if (interaction.customId === "ticket_claim") {
-        if (!isStaff) {
-          return interaction.reply({
-            content: "❌ Bu desteği sadece yetkililer üstlenebilir.",
-            ephemeral: true
-          });
-        }
+if (interaction.customId === "ticket_claim") {
+  if (!isStaff) {
+    return interaction.reply({
+      content: "❌ Bu desteği sadece yetkililer üstlenebilir.",
+      ephemeral: true
+    });
+  }
 
-        await interaction.channel.send(
-          `✅ **Destek ${interaction.user} tarafından üstlenildi.** Artık bu destek ile ilgilenecek.`
-        );
+  const disabledRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel("✅ Destek Üstlenildi!")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+    new ButtonBuilder()
+      .setCustomId("ticket_delete")
+      .setLabel("❌ Desteği Sil")
+      .setStyle(ButtonStyle.Danger)
+  );
 
-        return interaction.reply({
-          content: "💎 Desteği üstlendin.",
-          ephemeral: true
-        });
-      }
+  await interaction.message.edit({
+    components: [disabledRow]
+  });
+
+  await interaction.channel.send(
+    `✅ **Destek ${interaction.user} tarafından üstlenildi.** Artık bu destek ile ilgilenecek.`
+  );
+
+  return interaction.reply({
+    content: "💎 Desteği başarıyla üstlendin.",
+    ephemeral: true
+  });
+}
+
 
       if (interaction.customId === "ticket_delete") {
         if (!isStaff && !isOwner) {
