@@ -7,10 +7,16 @@ const {
   GatewayIntentBits,
   Collection,
   ActionRowBuilder,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits
 } = require("discord.js");
 
-/* ================= EXPRESS ================= */
+
+const TICKET_CATEGORY_ID = "1454604502295642375";
+const SUPPORT_ROLE_ID = "1454393829577986099";
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -22,7 +28,6 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server aktif: ${PORT}`);
 });
 
-/* ================= DISCORD ================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -34,7 +39,6 @@ const client = new Client({
 const PREFIX = "!";
 client.commands = new Collection();
 
-/* ================= KOMUTLAR ================= */
 const commandsPath = path.join(__dirname, "komutlar");
 const commandFiles = fs
   .readdirSync(commandsPath)
@@ -48,7 +52,6 @@ for (const file of commandFiles) {
   }
 }
 
-/* ================= MESSAGE COMMAND ================= */
 client.on("messageCreate", message => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
@@ -67,14 +70,10 @@ client.on("messageCreate", message => {
   }
 });
 
-/* ================= INTERACTIONS (DÜZELTİLDİ) ================= */
 client.on("interactionCreate", async interaction => {
   try {
-    /* 🎟️ BUTON */
-    if (interaction.isButton()) {
-      if (interaction.customId !== "ticket_create") return;
 
-      // ⚠️ ÖNCE ACK
+    if (interaction.isButton() && interaction.customId === "ticket_create") {
       await interaction.deferReply({ ephemeral: true });
 
       const menu = new StringSelectMenuBuilder()
@@ -88,37 +87,127 @@ client.on("interactionCreate", async interaction => {
           { label: "Diğer", value: "diger", emoji: "⁉️" }
         ]);
 
-      const row = new ActionRowBuilder().addComponents(menu);
-
       return interaction.editReply({
-        content:
-          "**Hangi Sebepten Dolayı Destek Talebi Oluşturuyorsunuz?**",
-        components: [row]
+        content: "**Hangi Sebepten Dolayı Destek Talebi Oluşturuyorsunuz?**",
+        components: [new ActionRowBuilder().addComponents(menu)]
       });
     }
 
-    /* 📋 SELECT MENU */
-    if (interaction.isStringSelectMenu()) {
-      if (interaction.customId !== "ticket_reason") return;
+    if (interaction.isStringSelectMenu() && interaction.customId === "ticket_reason") {
+      const reasonMap = {
+        teknik: "🔧 Teknik Destek",
+        odeme: "💳 Ödeme İşlemleri",
+        hesap: "🔑 Oyun İçi Hesap İşlemleri",
+        partner: "🤝 Partnerlik Anlaşmaları",
+        diger: "⁉️ Diğer"
+      };
+
+      const reason = reasonMap[interaction.values[0]];
+
+      const channel = await interaction.guild.channels.create({
+        name: `destek-${interaction.user.id}`,
+        parent: TICKET_CATEGORY_ID,
+        permissionOverwrites: [
+          {
+            id: interaction.guild.id,
+            deny: [PermissionFlagsBits.ViewChannel]
+          },
+          {
+            id: interaction.user.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages
+            ]
+          },
+          {
+            id: SUPPORT_ROLE_ID,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages
+            ]
+          }
+        ]
+      });
+
+      const embed = {
+        title: "KuramaMC Destek Talebi",
+        description:
+          "---------------------------\n\n" +
+          `Desteğe Hoş Geldin ${interaction.user},\n` +
+          "Yetkililerimiz Kısa Süre İçinde Seninle İlgilenecektir.\n\n" +
+          `**Destek Açılma Sebebi:** ${reason}`,
+        color: 0x2f3136
+      };
+
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("ticket_claim")
+          .setLabel("💎 Desteği Üstlen")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("ticket_delete")
+          .setLabel("❌ Desteği Sil")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await channel.send({
+        content: `<@&${SUPPORT_ROLE_ID}>`,
+        embeds: [embed],
+        components: [buttons]
+      });
 
       return interaction.update({
-        content: `✅ **Destek Talebi Sebebiniz:** ${interaction.values[0]}`,
+        content: "✅ Destek talebin oluşturuldu.",
         components: []
       });
     }
+    
+    if (interaction.isButton()) {
+      const isStaff = interaction.member.roles.cache.has(SUPPORT_ROLE_ID);
+      const isOwner = interaction.channel.name.endsWith(interaction.user.id);
+
+      if (interaction.customId === "ticket_claim") {
+        if (!isStaff) {
+          return interaction.reply({
+            content: "❌ Bu desteği sadece yetkililer üstlenebilir.",
+            ephemeral: true
+          });
+        }
+
+        await interaction.channel.send(
+          `✅ **Destek ${interaction.user} tarafından üstlenildi.** Artık bu destek ile ilgilenecek.`
+        );
+
+        return interaction.reply({
+          content: "💎 Desteği üstlendin.",
+          ephemeral: true
+        });
+      }
+
+      if (interaction.customId === "ticket_delete") {
+        if (!isStaff && !isOwner) {
+          return interaction.reply({
+            content: "❌ Bu desteği silme yetkin yok.",
+            ephemeral: true
+          });
+        }
+
+        await interaction.reply("🗑️ Destek 5 saniye içinde silinecek...");
+
+        setTimeout(() => {
+          interaction.channel.delete().catch(() => {});
+        }, 5000);
+      }
+    }
+
   } catch (err) {
     console.error("INTERACTION HATASI:", err);
-
-    if (!interaction.replied && !interaction.deferred) {
-      interaction.reply({
-        content: "❌ Bir hata oluştu.",
-        ephemeral: true
-      });
+    if (!interaction.replied) {
+      interaction.reply({ content: "❌ Bir hata oluştu.", ephemeral: true });
     }
   }
 });
 
-/* ================= READY ================= */
 client.once("ready", () => {
   console.log(`🤖 Bot giriş yaptı: ${client.user.tag}`);
 });
