@@ -13,9 +13,9 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
-
 const TICKET_CATEGORY_ID = "1454604502295642375";
 const SUPPORT_ROLE_ID = "1454393829577986099";
+const LOG_CHANNEL_ID = "1456243686836015180";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,7 +32,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers // LOG İÇİN GEREKLİ
   ]
 });
 
@@ -72,7 +73,6 @@ client.on("messageCreate", message => {
 
 client.on("interactionCreate", async interaction => {
   try {
-
     if (interaction.isButton() && interaction.customId === "ticket_create") {
       await interaction.deferReply({ ephemeral: true });
 
@@ -161,45 +161,42 @@ client.on("interactionCreate", async interaction => {
         components: []
       });
     }
-    
+
     if (interaction.isButton()) {
       const isStaff = interaction.member.roles.cache.has(SUPPORT_ROLE_ID);
       const isOwner = interaction.channel.name.endsWith(interaction.user.id);
 
-if (interaction.customId === "ticket_claim") {
-  if (!isStaff) {
-    return interaction.reply({
-      content: "❌ Bu desteği sadece yetkililer üstlenebilir.",
-      ephemeral: true
-    });
-  }
+      if (interaction.customId === "ticket_claim") {
+        if (!isStaff) {
+          return interaction.reply({
+            content: "❌ Bu desteği sadece yetkililer üstlenebilir.",
+            ephemeral: true
+          });
+        }
 
-  const disabledRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("ticket_claim_disabled") // ✅ EKLENDİ
-      .setLabel("✅ Destek Üstlenildi!")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(true),
-    new ButtonBuilder()
-      .setCustomId("ticket_delete")
-      .setLabel("❌ Desteği Sil")
-      .setStyle(ButtonStyle.Danger)
-  );
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("ticket_claim_disabled")
+            .setLabel("✅ Destek Üstlenildi!")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true),
+          new ButtonBuilder()
+            .setCustomId("ticket_delete")
+            .setLabel("❌ Desteği Sil")
+            .setStyle(ButtonStyle.Danger)
+        );
 
-  await interaction.message.edit({
-    components: [disabledRow]
-  });
+        await interaction.message.edit({ components: [disabledRow] });
 
-  await interaction.channel.send(
-    `✅ **Destek ${interaction.user} tarafından üstlenildi.** Artık bu destek ile ilgilenecek.`
-  );
+        await interaction.channel.send(
+          `✅ **Destek ${interaction.user} tarafından üstlenildi.**`
+        );
 
-  return interaction.reply({
-    content: "💎 Desteği başarıyla üstlendin.",
-    ephemeral: true
-  });
-}
-
+        return interaction.reply({
+          content: "💎 Desteği başarıyla üstlendin.",
+          ephemeral: true
+        });
+      }
 
       if (interaction.customId === "ticket_delete") {
         if (!isStaff && !isOwner) {
@@ -210,13 +207,9 @@ if (interaction.customId === "ticket_claim") {
         }
 
         await interaction.reply("🗑️ Destek 5 saniye içinde silinecek...");
-
-        setTimeout(() => {
-          interaction.channel.delete().catch(() => {});
-        }, 5000);
+        setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
       }
     }
-
   } catch (err) {
     console.error("INTERACTION HATASI:", err);
     if (!interaction.replied) {
@@ -224,6 +217,62 @@ if (interaction.customId === "ticket_claim") {
     }
   }
 });
+
+/* ================= LOG SİSTEMİ ================= */
+
+// BAN
+client.on("guildBanAdd", ban => {
+  const log = ban.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (log) log.send(`🔨 **BAN**\n👤 ${ban.user.tag}`);
+});
+
+// UNBAN
+client.on("guildBanRemove", ban => {
+  const log = ban.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (log) log.send(`♻️ **UNBAN**\n👤 ${ban.user.tag}`);
+});
+
+// KICK
+client.on("guildMemberRemove", async member => {
+  const logs = await member.guild.fetchAuditLogs({ type: 20, limit: 1 });
+  const entry = logs.entries.first();
+  if (!entry || entry.target.id !== member.id) return;
+
+  const log = member.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (log) {
+    log.send(`👢 **KICK**\n👤 ${member.user.tag}\n🛡️ ${entry.executor.tag}`);
+  }
+});
+
+// MUTE / UNMUTE
+client.on("guildMemberUpdate", (oldM, newM) => {
+  const log = newM.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (!log) return;
+
+  if (!oldM.communicationDisabledUntil && newM.communicationDisabledUntil) {
+    log.send(`🔇 **MUTE**\n👤 ${newM.user.tag}`);
+  }
+
+  if (oldM.communicationDisabledUntil && !newM.communicationDisabledUntil) {
+    log.send(`🔊 **UNMUTE**\n👤 ${newM.user.tag}`);
+  }
+});
+
+// KANAL CREATE
+client.on("channelCreate", channel => {
+  if (!channel.guild) return;
+  const log = channel.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (log) log.send(`📁 **KANAL OLUŞTURULDU**: ${channel.name}`);
+});
+
+// KANAL DELETE
+client.on("channelDelete", channel => {
+  if (!channel.guild) return;
+  const log = channel.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (log) log.send(`🗑️ **KANAL SİLİNDİ**: ${channel.name}`);
+});
+
+/* ================================================= */
 
 client.once("ready", () => {
   console.log(`🤖 Bot giriş yaptı: ${client.user.tag}`);
