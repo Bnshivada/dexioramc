@@ -2,16 +2,16 @@ const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
   name: "ip",
-  description: "KuramaMC sunucu bilgilerini gösterir",
+  description: "DexioraMC sunucu bilgilerini gösterir",
   execute(message) {
     const embed = new EmbedBuilder()
-      .setTitle("🌍 KuramaMC - Sunucu Bilgileri")
+      .setTitle("🌍 DexioraMC - Sunucu Bilgileri")
       .setDescription(
         "**Sunucu IP:** `5.133.100.199`\n\n" +
-        "**Sürüm:** 1.21.4 ve Üstü"
+        "**Sürüm:** 1.21+"
       )
       .setFooter({
-        text: "İyi oyunlar dileriz | KuramaMC Lifesteal",
+        text: "İyi oyunlar dileriz | DexioraMC Survival",
         iconURL: message.guild.iconURL({ dynamic: true })
       })
       .setColor(0x00ff99);
