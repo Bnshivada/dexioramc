@@ -16,7 +16,7 @@ module.exports = {
     const randomColor = Math.floor(Math.random() * 16777215);
 
     const embed = new EmbedBuilder()
-      .setTitle("🎟️ KuramaMC Destek Talebi 🎟️")
+      .setTitle("🎟️ DexioraMC Destek Talebi 🎟️")
       .setDescription(
         "---------------------------------\n\n" +
         "Destek Sistemine Hoşgeldin Oyuncu,\n" +
@@ -30,7 +30,7 @@ module.exports = {
       )
       .setColor(randomColor)
       .setFooter({
-        text: "5.133.100.199 | KuramaMC LIFESTEAL",
+        text: "5.133.100.199 | DexioraMC Survival",
         iconURL: message.guild.iconURL({ dynamic: true })
       });
 
