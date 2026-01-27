@@ -21,7 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("KuramaMC Discord Bot Aktif 🚀");
+  res.send("DexioraMC Discord Bot Aktif 🚀");
 });
 
 app.listen(PORT, () => {
@@ -130,7 +130,7 @@ client.on("interactionCreate", async interaction => {
       });
 
       const embed = {
-        title: "KuramaMC Destek Talebi",
+        title: "DexioraMC Destek Talebi",
         description:
           "---------------------------\n\n" +
           `Desteğe Hoş Geldin ${interaction.user},\n` +
