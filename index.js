@@ -16,6 +16,7 @@ const {
 const TICKET_CATEGORY_ID = "1454604502295642375";
 const SUPPORT_ROLE_ID = "1454393829577986099";
 const LOG_CHANNEL_ID = "1456243686836015180";
+const PHOTO_CHANNEL_ID = "1454515901054324779"; // Fotoğraf kanalı ID'si
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,7 +34,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers // LOG İÇİN GEREKLİ
+    GatewayIntentBits.GuildMembers
   ]
 });
 
@@ -41,20 +42,39 @@ const PREFIX = "!";
 client.commands = new Collection();
 
 const commandsPath = path.join(__dirname, "komutlar");
-const commandFiles = fs
-  .readdirSync(commandsPath)
-  .filter(f => f.endsWith(".js"));
+if (fs.existsSync(commandsPath)) {
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter(f => f.endsWith(".js"));
 
-for (const file of commandFiles) {
-  const command = require(path.join(commandsPath, file));
-  if (command.name && command.execute) {
-    client.commands.set(command.name, command);
-    console.log(`✔ Komut yüklendi: ${command.name}`);
+  for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    if (command.name && command.execute) {
+      client.commands.set(command.name, command);
+      console.log(`✔ Komut yüklendi: ${command.name}`);
+    }
   }
 }
 
-client.on("messageCreate", message => {
+client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
+
+  if (message.channel.id === PHOTO_CHANNEL_ID) {
+    if (message.attachments.size === 0) {
+      return message.delete().catch(() => {});
+    }
+
+    try {
+      await message.startThread({
+        name: `💬 ${message.author.username} - Tartışma`,
+        autoArchiveDuration: 1440,
+        reason: 'Fotoğraf kanalı için otomatik alt başlık.'
+      });
+    } catch (err) {
+      console.error("Thread açılırken hata oluştu:", err);
+    }
+  }
+
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
@@ -218,33 +238,27 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-/* ================= LOG SİSTEMİ ================= */
-
-// BAN
 client.on("guildBanAdd", ban => {
   const log = ban.guild.channels.cache.get(LOG_CHANNEL_ID);
   if (log) log.send(`🔨 **BAN**\n👤 ${ban.user.tag}`);
 });
 
-// UNBAN
 client.on("guildBanRemove", ban => {
   const log = ban.guild.channels.cache.get(LOG_CHANNEL_ID);
   if (log) log.send(`♻️ **UNBAN**\n👤 ${ban.user.tag}`);
 });
 
-// KICK
 client.on("guildMemberRemove", async member => {
-  const logs = await member.guild.fetchAuditLogs({ type: 20, limit: 1 });
-  const entry = logs.entries.first();
-  if (!entry || entry.target.id !== member.id) return;
-
-  const log = member.guild.channels.cache.get(LOG_CHANNEL_ID);
-  if (log) {
-    log.send(`👢 **KICK**\n👤 ${member.user.tag}\n🛡️ ${entry.executor.tag}`);
-  }
+  try {
+    const logs = await member.guild.fetchAuditLogs({ type: 20, limit: 1 });
+    const entry = logs.entries.first();
+    const log = member.guild.channels.cache.get(LOG_CHANNEL_ID);
+    if (log && entry && entry.target.id === member.id) {
+      log.send(`👢 **KICK**\n👤 ${member.user.tag}\n🛡️ ${entry.executor.tag}`);
+    }
+  } catch (e) {}
 });
 
-// MUTE / UNMUTE
 client.on("guildMemberUpdate", (oldM, newM) => {
   const log = newM.guild.channels.cache.get(LOG_CHANNEL_ID);
   if (!log) return;
@@ -258,21 +272,17 @@ client.on("guildMemberUpdate", (oldM, newM) => {
   }
 });
 
-// KANAL CREATE
 client.on("channelCreate", channel => {
   if (!channel.guild) return;
   const log = channel.guild.channels.cache.get(LOG_CHANNEL_ID);
   if (log) log.send(`📁 **KANAL OLUŞTURULDU**: ${channel.name}`);
 });
 
-// KANAL DELETE
 client.on("channelDelete", channel => {
   if (!channel.guild) return;
   const log = channel.guild.channels.cache.get(LOG_CHANNEL_ID);
   if (log) log.send(`🗑️ **KANAL SİLİNDİ**: ${channel.name}`);
 });
-
-/* ================================================= */
 
 client.once("ready", () => {
   console.log(`🤖 Bot giriş yaptı: ${client.user.tag}`);
